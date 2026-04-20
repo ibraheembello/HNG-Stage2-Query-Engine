@@ -8,24 +8,41 @@ async function main() {
   const data = JSON.parse(fs.readFileSync('./profiles.json', 'utf8'));
   const profiles = data.profiles;
 
-  console.log(`Seeding ${profiles.length} profiles...`);
+  console.log(`Checking existing profiles...`);
+  const existingProfiles = await prisma.profile.findMany({
+    select: { name: true }
+  });
+  const existingNames = new Set(existingProfiles.map(p => p.name));
 
-  for (const profile of profiles) {
-    await prisma.profile.upsert({
-      where: { name: profile.name },
-      update: {},
-      create: {
-        id: uuidv7(),
-        name: profile.name,
-        gender: profile.gender,
-        gender_probability: profile.gender_probability,
-        age: profile.age,
-        age_group: profile.age_group,
-        country_id: profile.country_id,
-        country_name: profile.country_name,
-        country_probability: profile.country_probability,
-      },
+  const newProfiles = profiles.filter((p: any) => !existingNames.has(p.name));
+
+  if (newProfiles.length === 0) {
+    console.log('No new profiles to seed.');
+    return;
+  }
+
+  console.log(`Seeding ${newProfiles.length} new profiles...`);
+
+  // Batch insert for performance
+  const batchSize = 100;
+  for (let i = 0; i < newProfiles.length; i += batchSize) {
+    const batch = newProfiles.slice(i, i + batchSize).map((p: any) => ({
+      id: uuidv7(),
+      name: p.name,
+      gender: p.gender,
+      gender_probability: p.gender_probability,
+      age: p.age,
+      age_group: p.age_group,
+      country_id: p.country_id,
+      country_name: p.country_name,
+      country_probability: p.country_probability,
+    }));
+
+    await prisma.profile.createMany({
+      data: batch,
+      skipDuplicates: true,
     });
+    console.log(`Seeded batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(newProfiles.length / batchSize)}`);
   }
 
   console.log('Seeding completed.');
