@@ -23,6 +23,12 @@ A professional demographic intelligence platform featuring a rule-based Natural 
 
 ---
 
+## 📸 UI Preview
+
+![Intelligence Query Engine Dashboard](./ui-preview.png)
+
+---
+
 ## 🛠️ Tech Stack
 
 ### Backend
