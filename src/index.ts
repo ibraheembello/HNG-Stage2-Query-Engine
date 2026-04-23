@@ -70,7 +70,7 @@ if (fs.existsSync(frontendPath)) {
 }
 
 // Catch-all to serve Frontend UI for any non-API routes
-app.get('*', (req, res, next) => {
+app.get('(.*)', (req, res, next) => {
   // Don't intercept API calls
   if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) return next();
   
