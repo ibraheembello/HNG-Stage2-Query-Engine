@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import profileRoutes from './routes/profile.routes';
@@ -26,21 +27,25 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/controllers/*.ts', './src/routes/*.ts'],
+  apis: ['./src/controllers/*.ts', './src/routes/*.ts', './dist/controllers/*.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Middleware
-app.use(cors({ origin: '*' })); // Access-Control-Allow-Origin: *
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Routes
+// API Routes
 app.use('/api/profiles', profileRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health check
-app.get('/', (req, res) => {
+// Serve Frontend Static Files
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
+
+// Health check API
+app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'success', 
     message: 'Intelligence Query Engine is running',
@@ -48,11 +53,18 @@ app.get('/', (req, res) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: 'Profile not found' // Per requirements for 404
+// Catch-all to serve Frontend UI for any non-API routes
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+    if (err) {
+      // If index.html is missing (e.g. during dev), show the JSON status
+      res.json({ 
+        status: 'success', 
+        message: 'Intelligence Query Engine API is Live. (UI not built)',
+        documentation: '/api-docs'
+      });
+    }
   });
 });
 
@@ -63,5 +75,4 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
 });

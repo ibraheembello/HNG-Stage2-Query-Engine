@@ -34,7 +34,7 @@ export interface ProfileFilters {
   q?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/profiles';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/profiles';
 
 export const fetchProfiles = async (filters: ProfileFilters): Promise<ProfilesResponse> => {
   const endpoint = filters.q ? `${API_BASE_URL}/search` : API_BASE_URL;
