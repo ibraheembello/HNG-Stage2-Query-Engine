@@ -1,129 +1,110 @@
 # Insighta Labs - Intelligence Query Engine
 
-A demographic intelligence API that supports advanced filtering, sorting, pagination, and natural language querying of user profiles.
+[![Vercel Deployment](https://img.shields.io/badge/Deployment-Live-success?style=for-the-badge&logo=vercel)](https://hng-stage2-query-engine.vercel.app)
+[![API Docs](https://img.shields.io/badge/API-Swagger-blue?style=for-the-badge&logo=swagger)](https://hng-stage2-query-engine.vercel.app/api-docs)
 
-## Table of Contents
-- [Features](#features)
-- [API Endpoints](#api-endpoints)
-- [Natural Language Parsing](#natural-language-parsing)
-- [Deployment on Vercel](#deployment-on-vercel)
-- [Local Setup](#local-setup)
-- [Technologies Used](#technologies-used)
+A professional demographic intelligence platform featuring a rule-based Natural Language Processing (NLP) engine. Slice and query demographic data using plain English or advanced structured filters.
 
-## Features
-- **Advanced Filtering**: Filter by gender, age group, country, and probability scores.
-- **Sorting**: Sort results by age, creation date, or gender probability.
-- **Pagination**: Paginated responses with customizable limits.
-- **Natural Language Search**: Query data using plain English (e.g., "young males from nigeria").
-- **Seeded Data**: Pre-loaded with 2026 demographic profiles.
+## ✨ Features
 
-## API Endpoints
+- **🧠 Rule-Based NL Engine**: Parse complex queries like *"young males from nigeria"* or *"females above 30"* without LLM overhead.
+- **💎 Glassmorphic UI**: A stunning, responsive dashboard with parallax glowing backgrounds and smooth staggered animations.
+- **🔍 Advanced Filtering**: Granular control over gender, age groups, country ISO codes, and confidence thresholds.
+- **⚡ High Performance**: Built with React 19, Vite, and Prisma ORM for lightning-fast interactions and database queries.
+- **📖 Interactive API Docs**: Full OpenAPI/Swagger documentation for seamless developer integration.
+- **🧪 E2E Validated**: Verified with Playwright to ensure 100% reliability of the UI-to-API lifecycle.
 
-### 1. Get All Profiles
-`GET /api/profiles`
+---
 
-**Query Parameters:**
-- `gender`: `male` | `female`
-- `age_group`: `child` | `teenager` | `adult` | `senior`
-- `country_id`: ISO 2-letter code (e.g., `NG`)
-- `min_age`, `max_age`: Numeric age range
-- `min_gender_probability`, `min_country_probability`: Confidence thresholds
-- `sort_by`: `age` | `created_at` | `gender_probability`
-- `order`: `asc` | `desc`
-- `page`, `limit`: Pagination controls
+## 🚀 Live Demo & Documentation
 
-### 2. Natural Language Query
-`GET /api/profiles/search?q=<query>`
+- **Interactive Dashboard**: [hng-stage2-query-engine.vercel.app](https://hng-stage2-query-engine.vercel.app)
+- **Swagger API Explorer**: [/api-docs](https://hng-stage2-query-engine.vercel.app/api-docs)
 
-**Example:** `/api/profiles/search?q=young males from nigeria`
+---
 
-## Natural Language Parsing
+## 🛠️ Tech Stack
 
-### Approach
-The parser uses a **rule-based regular expression engine** to identify specific keywords and patterns in the query string and map them to database filters. This approach ensures high performance and predictability without the overhead of an LLM.
+### Backend
+- **Node.js & TypeScript**: Type-safe server logic.
+- **Express.js**: Lightweight and fast web framework.
+- **Prisma ORM**: Modern database access for PostgreSQL.
+- **Swagger/OpenAPI**: Automated interactive documentation.
 
-### Supported Keywords & Mappings
-| Keyword | Logic / Mapping |
-|---------|-----------------|
-| `young` | `min_age=16` AND `max_age=24` |
-| `males` / `male` | `gender=male` |
-| `females` / `female` | `gender=female` |
-| `above <X>` | `min_age=X+1` |
-| `from <country_id>` | `country_id=<ID>` (e.g., "from NG") |
-| `from <country_name>` | Maps full country names to ISO codes (e.g., "Nigeria" -> "NG") |
-| `child` / `children` | `age_group=child` |
-| `teenagers` | `age_group=teenager` |
-| `adults` | `age_group=adult` |
-| `seniors` | `age_group=senior` |
+### Frontend
+- **React 19 & Vite**: The cutting edge of frontend development.
+- **Tailwind CSS**: Modern utility-first styling.
+- **Framer Motion**: Professional high-fidelity animations.
+- **TanStack Query**: Robust server state management and caching.
+- **Lucide React**: Clean and consistent iconography.
 
-### Logic Workflow
-1. Convert query to lowercase.
-2. Execute a series of regex checks for gender, age groups, and "young" status.
-3. Extract age thresholds from patterns like "above 30".
-4. Search for country names or "from [ISO code]" patterns.
-5. Combine all identified filters into a single database query.
-6. Apply pagination (page/limit) to the resulting filter set.
+---
+
+## 📂 Natural Language Parsing Approach
+
+The engine uses a **Deterministic Rule-Based Parser** (Regex-driven) to map human language to structured database queries:
+
+| Intent | Pattern Example | Mapping |
+| :--- | :--- | :--- |
+| **Age Range** | *"young"* | `min_age: 16`, `max_age: 24` |
+| **Threshold** | *"above 30"* | `min_age: 31` |
+| **Demographic** | *"males"*, *"children"* | `gender: male`, `age_group: child` |
+| **Location** | *"from nigeria"* | `country_id: NG` |
 
 ### Limitations
-- **Complex Conjunctions**: Does not currently handle "OR" logic (e.g., "males OR females"). It assumes "AND" for all identified filters.
-- **Negative Filters**: Does not support "not" (e.g., "people not from Nigeria").
-- **Relative Ranges**: Does not support "between X and Y" or "below X" (except for the predefined "young" range).
-- **Misspellings**: Exact keyword matches are required; fuzzy matching is not implemented.
-- **Ambiguity**: If a query contains conflicting terms (e.g., "male and female"), the last matched gender will typically take precedence or they may conflict depending on regex order.
+- Does not handle logical "OR" operators (assumes "AND" for all identified filters).
+- Requires exact keyword matches (no fuzzy matching).
+- Does not support relative ranges like "between" or "less than" (except for the predefined "young" constant).
 
-## Deployment on Vercel
+---
 
-Follow these steps to deploy the Intelligence Query Engine to Vercel:
+## ⚙️ Setup & Installation
 
-### 1. Database Setup
-- Provision a PostgreSQL database (e.g., using Supabase, Neon, or Aiven).
-- Copy the Connection String (URI).
-
-### 2. Prepare for Vercel
-- Ensure `prisma/schema.prisma` is present.
-- Ensure `package.json` has the `postinstall` script: `"postinstall": "prisma generate"`.
-- Create a `vercel.json` in the root (optional, but recommended for Express):
-```json
-{
-  "version": 2,
-  "builds": [
-    {
-      "src": "src/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "src/index.ts"
-    }
-  ]
-}
-```
-
-### 3. Deploy via Vercel CLI or Dashboard
-- **Dashboard**: Import your GitHub repository.
-- **Environment Variables**: Add `DATABASE_URL` with your PostgreSQL connection string.
-- **Build & Deploy**: Vercel will run `npm install`, then `prisma generate`, and deploy the server.
-
-### 4. Run Seeding
-Since Vercel is serverless, you should run the seed script locally once or via a GitHub Action to populate your production database:
+### 1. Clone & Install
 ```bash
-DATABASE_URL="your_prod_db_url" npm run seed
+git clone https://github.com/yourusername/hng-stage2-query-engine.git
+npm install
+cd frontend && npm install
 ```
 
-## Local Setup
-1. Clone the repository.
-2. Install dependencies: `npm install`.
-3. Set up your `.env` file with `DATABASE_URL`.
-4. Generate Prisma client: `npx prisma generate`.
-5. Run migrations (or `db push` for quick setup): `npx prisma db push`.
-6. Seed the database: `npm run seed`.
-7. Start the dev server: `npm run dev`.
+### 2. Environment Configuration
+Create a `.env` file in the root:
+```env
+DATABASE_URL="your-postgresql-url"
+```
 
-## Technologies Used
-- **Node.js** & **TypeScript**
-- **Express.js** (Server Framework)
-- **Prisma** (ORM)
-- **PostgreSQL** (Database)
-- **UUID v7** (Primary Keys)
+### 3. Database Initialization
+```bash
+npx prisma db push
+npm run seed
+```
+
+### 4. Running the Project
+**Backend:**
+```bash
+npm run dev
+```
+
+**Frontend:**
+```bash
+cd frontend && npm run dev
+```
+
+---
+
+## 🧪 Testing
+
+### API Unit Tests
+```bash
+npm run test
+```
+
+### UI End-to-End Tests
+```bash
+cd frontend
+npx playwright test
+```
+
+---
+
+*Powered by Insighta Labs Intelligent Engine © 2026*

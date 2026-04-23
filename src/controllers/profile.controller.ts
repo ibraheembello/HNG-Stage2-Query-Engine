@@ -3,6 +3,70 @@ import * as profileService from '../services/profile.service';
 import { parseNLQuery } from '../utils/parser';
 import { AppError, handleError } from '../utils/errors';
 
+/**
+ * @openapi
+ * /api/profiles:
+ *   get:
+ *     summary: Get all profiles with filtering, sorting, and pagination
+ *     tags: [Profiles]
+ *     parameters:
+ *       - in: query
+ *         name: gender
+ *         schema:
+ *           type: string
+ *           enum: [male, female]
+ *       - in: query
+ *         name: age_group
+ *         schema:
+ *           type: string
+ *           enum: [child, teenager, adult, senior]
+ *       - in: query
+ *         name: country_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: min_age
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: max_age
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: min_gender_probability
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: min_country_probability
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: sort_by
+ *         schema:
+ *           type: string
+ *           enum: [age, created_at, gender_probability]
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *     responses:
+ *       200:
+ *         description: Success response
+ *       422:
+ *         description: Invalid parameter type
+ */
 export const getAllProfiles = async (req: Request, res: Response) => {
   try {
     const {
@@ -48,6 +112,35 @@ export const getAllProfiles = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @openapi
+ * /api/profiles/search:
+ *   get:
+ *     summary: Natural Language Query to search profiles
+ *     tags: [Profiles]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Plain English query (e.g., "young males from nigeria")
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Success response
+ *       400:
+ *         description: Missing or empty parameter
+ */
 export const searchProfiles = async (req: Request, res: Response) => {
   try {
     const { q, page, limit } = req.query;
