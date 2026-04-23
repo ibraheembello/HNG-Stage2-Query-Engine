@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import profileRoutes from './routes/profile.routes';
@@ -11,6 +12,11 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Critical Check: Ensure Database URL exists
+if (!process.env.DATABASE_URL) {
+  console.warn('WARNING: DATABASE_URL environment variable is missing.');
+}
 
 // Swagger configuration
 const swaggerOptions = {
@@ -27,7 +33,11 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/controllers/*.ts', './src/routes/*.ts', './dist/controllers/*.js'],
+  apis: [
+    path.join(__dirname, '../src/controllers/*.ts'),
+    path.join(__dirname, '../src/routes/*.ts'),
+    path.join(__dirname, './controllers/*.js')
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -40,31 +50,41 @@ app.use(express.json());
 app.use('/api/profiles', profileRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Serve Frontend Static Files
-const frontendPath = path.join(process.cwd(), 'frontend/dist');
-app.use(express.static(frontendPath));
-
 // Health check API
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'success', 
     message: 'Intelligence Query Engine is running',
-    documentation: '/api-docs'
+    documentation: '/api-docs',
+    db_connected: !!process.env.DATABASE_URL
   });
 });
 
+// Resolve Frontend Path reliably for Vercel
+// In Vercel serverless, __dirname is the directory of the entry point (src/)
+const frontendPath = path.join(process.cwd(), 'frontend', 'dist');
+
+// Serve static files if they exist
+if (fs.existsSync(frontendPath)) {
+  app.use(express.static(frontendPath));
+}
+
 // Catch-all to serve Frontend UI for any non-API routes
 app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
-  res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
-    if (err) {
-      // If index.html is missing (e.g. during dev), show the JSON status
-      res.json({ 
-        status: 'success', 
-        message: 'Intelligence Query Engine API is Live. (UI not built)',
-        documentation: '/api-docs'
-      });
-    }
+  // Don't intercept API calls
+  if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) return next();
+  
+  const indexPath = path.join(frontendPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  
+  // Fallback if UI is not built or path is wrong
+  res.json({ 
+    status: 'success', 
+    message: 'Insighta Labs API is Live.',
+    ui_status: 'Frontend build not found at ' + frontendPath,
+    documentation: '/api-docs'
   });
 });
 
