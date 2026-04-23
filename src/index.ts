@@ -41,7 +41,7 @@ app.use('/api/profiles', profileRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Serve Frontend Static Files
-const frontendPath = path.join(__dirname, '../../frontend/dist');
+const frontendPath = path.join(process.cwd(), 'frontend/dist');
 app.use(express.static(frontendPath));
 
 // Health check API
