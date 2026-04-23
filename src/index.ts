@@ -13,11 +13,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Critical Check: Ensure Database URL exists
-if (!process.env.DATABASE_URL) {
-  console.warn('WARNING: DATABASE_URL environment variable is missing.');
-}
-
 // Swagger configuration
 const swaggerOptions = {
   definition: {
@@ -34,9 +29,8 @@ const swaggerOptions = {
     ],
   },
   apis: [
-    path.join(__dirname, '../src/controllers/*.ts'),
-    path.join(__dirname, '../src/routes/*.ts'),
-    path.join(__dirname, './controllers/*.js')
+    path.join(__dirname, './controllers/*.js'),
+    path.join(__dirname, '../src/controllers/*.ts')
   ],
 };
 
@@ -55,36 +49,35 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'success', 
     message: 'Intelligence Query Engine is running',
-    documentation: '/api-docs',
     db_connected: !!process.env.DATABASE_URL
   });
 });
 
-// Resolve Frontend Path reliably for Vercel
-// In Vercel serverless, __dirname is the directory of the entry point (src/)
+// Resolve Frontend Path
 const frontendPath = path.join(process.cwd(), 'frontend', 'dist');
 
-// Serve static files if they exist
-if (fs.existsSync(frontendPath)) {
-  app.use(express.static(frontendPath));
-}
+// Serve static files
+app.use(express.static(frontendPath));
 
-// Catch-all to serve Frontend UI for any non-API routes
-app.get('(.*)', (req, res, next) => {
-  // Don't intercept API calls
-  if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) return next();
-  
+// catch-all handler using a middleware instead of app.get('*')
+// This avoids the 'path-to-regexp' errors shown in your logs
+app.use((req, res, next) => {
+  // Ignore API and Docs
+  if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
+    return next();
+  }
+
   const indexPath = path.join(frontendPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
-  
-  // Fallback if UI is not built or path is wrong
+
+  // Fallback diagnostic if UI is not found
   res.json({ 
     status: 'success', 
     message: 'Insighta Labs API is Live.',
-    ui_status: 'Frontend build not found at ' + frontendPath,
-    documentation: '/api-docs'
+    info: 'Frontend build not detected. Please ensure "npm run build" completed successfully.',
+    path_checked: frontendPath
   });
 });
 
