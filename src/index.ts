@@ -11,34 +11,35 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Resolve Frontend Path reliably
+// Resolve Frontend Path
+// This path is optimized for Vercel's cloud environment
 const frontendPath = path.join(process.cwd(), 'dist', 'public');
 
 // Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// 1. Static Files (UI)
-app.use(express.static(frontendPath));
-
-// 2. API Routes
+// 1. API Routes
 app.use('/api/profiles', profileRoutes);
 
-// 3. Simple Health Check
+// 2. Health & Diagnostic API
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'success', 
+    engine: 'Insighta Labs v1.1',
     db_connected: !!process.env.DATABASE_URL,
-    ui_discovery: {
-      path: frontendPath,
-      exists: fs.existsSync(frontendPath),
-      index: fs.existsSync(path.join(frontendPath, 'index.html'))
+    ui: {
+      checked: frontendPath,
+      exists: fs.existsSync(frontendPath)
     }
   });
 });
 
-// 4. Bulletproof Catch-all for UI
-app.get('*', (req, res, next) => {
+// 3. Static Files (UI)
+app.use(express.static(frontendPath));
+
+// 4. UI Catch-all handler
+app.use((req, res, next) => {
   if (req.path.startsWith('/api')) return next();
   
   const indexPath = path.join(frontendPath, 'index.html');
@@ -48,16 +49,16 @@ app.get('*', (req, res, next) => {
   
   res.json({ 
     status: 'success', 
-    message: 'Insighta Labs API is Live.',
-    info: 'UI distribution folder not found. Path: ' + frontendPath
+    message: 'Insighta Labs API is Online.',
+    info: 'UI dashboard build not found. Verify deployment logs.'
   });
 });
 
-// Error handler
+// 5. Global Error Protection
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   handleError(err, res);
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Intelligence Engine starting on port ${PORT}`);
 });
