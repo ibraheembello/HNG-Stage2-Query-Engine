@@ -13,7 +13,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Resolve Frontend Path - Try multiple locations for maximum reliability
+// Resolve Frontend Path
 const frontendPath = path.join(process.cwd(), 'dist', 'public');
 const fallbackFrontendPath = path.join(process.cwd(), 'src', 'public');
 const activePublicPath = fs.existsSync(frontendPath) ? frontendPath : fallbackFrontendPath;
@@ -33,7 +33,13 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./dist/**/*.js', './src/**/*.ts'],
+  // FIXED: Specific file paths to prevent EISDIR crash
+  apis: [
+    './dist/controllers/*.js',
+    './dist/routes/*.js',
+    './src/controllers/*.ts',
+    './src/routes/*.ts'
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -49,17 +55,16 @@ app.use(express.static(activePublicPath));
 app.use('/api/profiles', profileRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// 3. Specific Health API (Must be /api/health)
+// 3. Specific Health API
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'success', 
     message: 'Intelligence Query Engine is running',
-    db_connected: !!process.env.DATABASE_URL,
-    ui_path: activePublicPath
+    db_connected: !!process.env.DATABASE_URL
   });
 });
 
-// 4. Catch-all for UI (Serve index.html for all non-API paths)
+// 4. Catch-all for UI
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
     return next();
@@ -70,16 +75,11 @@ app.get('*', (req, res, next) => {
     return res.sendFile(indexPath);
   }
 
-  // Final emergency response
   res.json({ 
     status: 'success', 
     message: 'Insighta Labs API is Live.',
-    info: 'UI index.html not found. Please verify the build process.',
-    debug: {
-      cwd: process.cwd(),
-      checked: activePublicPath,
-      exists: fs.existsSync(activePublicPath)
-    }
+    info: 'UI not found. Please verify the build process.',
+    debug: { path: activePublicPath }
   });
 });
 
