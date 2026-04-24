@@ -14,52 +14,55 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Resolve Frontend Path
-const frontendPath = path.join(__dirname, 'public');
+const frontendPath = path.join(process.cwd(), 'dist', 'public');
 
 // Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// 1. Static Files (UI) - Must be first
+// 1. Static Files (UI)
 app.use(express.static(frontendPath));
 
 // 2. API Routes
 app.use('/api/profiles', profileRoutes);
 
-// 3. Lazy Swagger (Prevents startup crash)
+// 3. Health API
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'success', 
+    db_connected: !!process.env.DATABASE_URL 
+  });
+});
+
+// 4. Safe Swagger (Only loads when clicked)
 app.use('/api-docs', (req, res, next) => {
   try {
-    const swaggerOptions = {
+    const swaggerSpec = swaggerJsdoc({
       definition: {
         openapi: '3.0.0',
         info: { title: 'Insighta Labs API', version: '1.0.0' },
       },
-      apis: ['./src/controllers/*.ts', './dist/controllers/*.js'],
-    };
-    const swaggerSpec = swaggerJsdoc(swaggerOptions);
+      // Fixed: Explicitly target files to prevent EISDIR crash
+      apis: ['./dist/controllers/*.js', './src/controllers/*.ts'],
+    });
     return swaggerUi.serve[0](req, res, () => {
       swaggerUi.setup(swaggerSpec)(req, res, next);
     });
   } catch (e) {
-    res.status(500).json({ status: 'error', message: 'Swagger load error' });
+    res.status(500).json({ status: 'error', message: 'Docs unavailable' });
   }
 });
 
-// 4. Simple Health API
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'success', 
-    message: 'Intelligence Query Engine is running',
-    db_connected: !!process.env.DATABASE_URL
-  });
-});
+// 5. Bulletproof Catch-all (No path strings to avoid Vercel PathError)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
 
-// 5. UI Catch-all
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) return next();
   const indexPath = path.join(frontendPath, 'index.html');
-  if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
-  res.json({ status: 'success', message: 'API Live. UI not found.' });
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  
+  res.json({ status: 'success', message: 'API is live. UI not bundled correctly.' });
 });
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
