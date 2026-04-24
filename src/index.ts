@@ -28,9 +28,12 @@ const swaggerOptions = {
       },
     ],
   },
+  // In production (Vercel), Swagger must look at compiled JS files
   apis: [
     path.join(__dirname, './controllers/*.js'),
-    path.join(__dirname, '../src/controllers/*.ts')
+    path.join(__dirname, './routes/*.js'),
+    path.join(__dirname, '../src/controllers/*.ts'),
+    path.join(__dirname, '../src/routes/*.ts'),
   ],
 };
 
@@ -53,16 +56,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Resolve Frontend Path
-const frontendPath = path.join(process.cwd(), 'frontend', 'dist');
+// Resolve Frontend Path (Colocated in dist/public during build)
+const frontendPath = path.join(__dirname, 'public');
 
 // Serve static files
 app.use(express.static(frontendPath));
 
-// catch-all handler using a middleware instead of app.get('*')
-// This avoids the 'path-to-regexp' errors shown in your logs
+// catch-all handler for the UI
 app.use((req, res, next) => {
-  // Ignore API and Docs
   if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
     return next();
   }
@@ -76,8 +77,8 @@ app.use((req, res, next) => {
   res.json({ 
     status: 'success', 
     message: 'Insighta Labs API is Live.',
-    info: 'Frontend build not detected. Please ensure "npm run build" completed successfully.',
-    path_checked: frontendPath
+    info: 'Frontend not found in bundle. Checking: ' + frontendPath,
+    documentation: '/api-docs'
   });
 });
 
