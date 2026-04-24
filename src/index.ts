@@ -11,38 +11,49 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Resolve Frontend Path
+// In Vercel serverless, __dirname is /var/task/src
+const frontendPath = path.join(__dirname, 'public');
+
+// Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
+// 1. Static Files (UI)
+app.use(express.static(frontendPath));
+
+// 2. API Routes
 app.use('/api/profiles', profileRoutes);
 
+// 3. Health API
 app.get('/api/health', (req, res) => {
-  const rootDir = process.cwd();
-  const dirFiles = (dir: string): string[] => {
-    try {
-      return fs.readdirSync(dir).map(f => {
-        const p = path.join(dir, f);
-        return fs.statSync(p).isDirectory() ? `${f}/` : f;
-      });
-    } catch (e) { return [String(e)]; }
-  };
-
   res.json({ 
     status: 'success', 
-    version: '1.4.0-DIAGNOSTIC',
-    cwd: rootDir,
-    dirname: __dirname,
-    root_listing: dirFiles(rootDir),
-    src_listing: dirFiles(path.join(rootDir, 'src')),
-    dist_listing: dirFiles(path.join(rootDir, 'dist')),
+    db: !!process.env.DATABASE_URL,
+    ui: fs.existsSync(path.join(frontendPath, 'index.html'))
   });
 });
 
+// 4. UI Catch-all
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
-  res.json({ status: 'success', message: 'Diagnostic Mode Active. Visit /api/health' });
+  
+  const indexPath = path.join(frontendPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  
+  res.json({ 
+    status: 'success', 
+    message: 'Insighta Labs API Online.',
+    info: 'UI not found at ' + frontendPath
+  });
+});
+
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  handleError(err, res);
 });
 
 app.listen(PORT, () => {
-  console.log(`Diagnostic server started on port ${PORT}`);
+  console.log(`Server started on port ${PORT}`);
 });
