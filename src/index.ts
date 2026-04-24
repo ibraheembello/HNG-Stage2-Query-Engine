@@ -28,8 +28,13 @@ const swaggerOptions = {
       },
     ],
   },
-  // Broad search for annotations to fix the "Blank Page" issue
-  apis: ['./src/**/*.ts', './dist/**/*.js', './**/*.js'],
+  // FIXED: Precise file patterns to prevent EISDIR errors on Vercel
+  apis: [
+    './dist/controllers/*.js',
+    './dist/routes/*.js',
+    './src/controllers/*.ts',
+    './src/routes/*.ts'
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -40,7 +45,7 @@ app.use(express.json());
 
 // API Routes
 app.use('/api/profiles', profileRoutes);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Health check API
 app.get('/api/health', (req, res) => {
@@ -52,12 +57,12 @@ app.get('/api/health', (req, res) => {
 });
 
 // Resolve Frontend Path
-const frontendPath = path.join(process.cwd(), 'src', 'public');
+const frontendPath = path.join(process.cwd(), 'dist', 'public');
 
 // Serve static files
 app.use(express.static(frontendPath));
 
-// catch-all handler for the UI
+// catch-all handler for the UI (Middleware mode for stability)
 app.use((req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
     return next();
@@ -68,14 +73,13 @@ app.use((req, res, next) => {
     return res.sendFile(indexPath);
   }
 
-  // Final Diagnostic
   res.json({ 
     status: 'success', 
     message: 'Insighta Labs API is Live.',
     debug: {
       checked_path: frontendPath,
       exists: fs.existsSync(frontendPath),
-      files: fs.existsSync(frontendPath) ? fs.readdirSync(frontendPath) : []
+      documentation: '/api-docs'
     }
   });
 });
