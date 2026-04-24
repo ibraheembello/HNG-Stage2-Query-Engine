@@ -11,34 +11,35 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Resolve Frontend Path
-const frontendPath = path.join(process.cwd(), 'dist', 'public');
+// Resolve Frontend Path to the ROOT public folder
+const frontendPath = path.resolve(process.cwd(), 'public');
 
 // Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// 1. API Routes
-app.use('/api/profiles', profileRoutes);
-
-// 2. Health & Diagnostic API (v1.2 Force Update)
+// 1. Health API (v1.3.0)
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'success', 
-    version: '1.2.0-FINAL',
-    db_connected: !!process.env.DATABASE_URL,
+    version: '1.3.0-STABLE',
+    db: !!process.env.DATABASE_URL,
     ui: {
       path: frontendPath,
-      exists: fs.existsSync(frontendPath)
+      exists: fs.existsSync(frontendPath),
+      index: fs.existsSync(path.join(frontendPath, 'index.html'))
     }
   });
 });
 
-// 3. Static Files (UI)
+// 2. Static Files
 app.use(express.static(frontendPath));
 
-// 4. UI Catch-all handler (NO STRING WILDCARDS to prevent PathError)
-app.use((req: any, res: any, next: any) => {
+// 3. API Routes
+app.use('/api/profiles', profileRoutes);
+
+// 4. Catch-all for UI
+app.use((req, res, next) => {
   if (req.path.startsWith('/api')) return next();
   
   const indexPath = path.join(frontendPath, 'index.html');
@@ -48,17 +49,16 @@ app.use((req: any, res: any, next: any) => {
   
   res.json({ 
     status: 'success', 
-    message: 'Insighta Labs v1.2 is Online.',
-    info: 'UI dashboard build folder not found. Check Vercel build logs.',
-    checked_path: frontendPath
+    version: '1.3.0',
+    info: 'Frontend not found at ' + frontendPath
   });
 });
 
-// 5. Global Error Protection
+// 5. Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   handleError(err, res);
 });
 
 app.listen(PORT, () => {
-  console.log(`Intelligence Engine v1.2 starting on port ${PORT}`);
+  console.log(`v1.3.0 Engine started on port ${PORT}`);
 });
