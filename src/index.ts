@@ -28,13 +28,8 @@ const swaggerOptions = {
       },
     ],
   },
-  // In production (Vercel), Swagger must look at compiled JS files
-  apis: [
-    path.join(__dirname, './controllers/*.js'),
-    path.join(__dirname, './routes/*.js'),
-    path.join(__dirname, '../src/controllers/*.ts'),
-    path.join(__dirname, '../src/routes/*.ts'),
-  ],
+  // Broad search for annotations to fix the "Blank Page" issue
+  apis: ['./src/**/*.ts', './dist/**/*.js', './**/*.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -45,7 +40,7 @@ app.use(express.json());
 
 // API Routes
 app.use('/api/profiles', profileRoutes);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
 // Health check API
 app.get('/api/health', (req, res) => {
@@ -56,7 +51,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Resolve Frontend Path (Colocated in dist/public during build)
+// Resolve Frontend Path (Now inside src/public)
 const frontendPath = path.join(__dirname, 'public');
 
 // Serve static files
@@ -73,12 +68,15 @@ app.use((req, res, next) => {
     return res.sendFile(indexPath);
   }
 
-  // Fallback diagnostic if UI is not found
+  // Final Diagnostic
   res.json({ 
     status: 'success', 
     message: 'Insighta Labs API is Live.',
-    info: 'Frontend not found in bundle. Checking: ' + frontendPath,
-    documentation: '/api-docs'
+    debug: {
+      checked_path: frontendPath,
+      exists: fs.existsSync(frontendPath),
+      files: fs.existsSync(frontendPath) ? fs.readdirSync(frontendPath) : []
+    }
   });
 });
 
