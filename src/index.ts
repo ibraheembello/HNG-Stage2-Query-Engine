@@ -11,54 +11,38 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Resolve Frontend Path to the ROOT public folder
-const frontendPath = path.resolve(process.cwd(), 'public');
-
-// Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// 1. Health API (v1.3.0)
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'success', 
-    version: '1.3.0-STABLE',
-    db: !!process.env.DATABASE_URL,
-    ui: {
-      path: frontendPath,
-      exists: fs.existsSync(frontendPath),
-      index: fs.existsSync(path.join(frontendPath, 'index.html'))
-    }
-  });
-});
-
-// 2. Static Files
-app.use(express.static(frontendPath));
-
-// 3. API Routes
 app.use('/api/profiles', profileRoutes);
 
-// 4. Catch-all for UI
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
-  
-  const indexPath = path.join(frontendPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    return res.sendFile(indexPath);
-  }
-  
+app.get('/api/health', (req, res) => {
+  const rootDir = process.cwd();
+  const dirFiles = (dir: string): string[] => {
+    try {
+      return fs.readdirSync(dir).map(f => {
+        const p = path.join(dir, f);
+        return fs.statSync(p).isDirectory() ? `${f}/` : f;
+      });
+    } catch (e) { return [String(e)]; }
+  };
+
   res.json({ 
     status: 'success', 
-    version: '1.3.0',
-    info: 'Frontend not found at ' + frontendPath
+    version: '1.4.0-DIAGNOSTIC',
+    cwd: rootDir,
+    dirname: __dirname,
+    root_listing: dirFiles(rootDir),
+    src_listing: dirFiles(path.join(rootDir, 'src')),
+    dist_listing: dirFiles(path.join(rootDir, 'dist')),
   });
 });
 
-// 5. Error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  handleError(err, res);
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.json({ status: 'success', message: 'Diagnostic Mode Active. Visit /api/health' });
 });
 
 app.listen(PORT, () => {
-  console.log(`v1.3.0 Engine started on port ${PORT}`);
+  console.log(`Diagnostic server started on port ${PORT}`);
 });
