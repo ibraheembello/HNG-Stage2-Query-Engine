@@ -1,6 +1,13 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 
-const prisma = new PrismaClient();
+let prisma: PrismaClient;
+
+const getPrisma = () => {
+  if (!prisma) {
+    prisma = new PrismaClient();
+  }
+  return prisma;
+};
 
 export interface ProfileFilters {
   gender?: string;
@@ -17,6 +24,7 @@ export interface ProfileFilters {
 }
 
 export const getProfiles = async (filters: ProfileFilters) => {
+  const db = getPrisma();
   const {
     gender,
     age_group,
@@ -56,13 +64,13 @@ export const getProfiles = async (filters: ProfileFilters) => {
   const take = Math.min(limit, 50);
 
   const [data, total] = await Promise.all([
-    prisma.profile.findMany({
+    db.profile.findMany({
       where,
       orderBy: { [sort_by]: order },
       skip,
       take,
     }),
-    prisma.profile.count({ where }),
+    db.profile.count({ where }),
   ]);
 
   return {
