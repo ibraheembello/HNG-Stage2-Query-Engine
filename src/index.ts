@@ -13,6 +13,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Resolve Frontend Path - Try multiple locations for maximum reliability
+const frontendPath = path.join(process.cwd(), 'dist', 'public');
+const fallbackFrontendPath = path.join(process.cwd(), 'src', 'public');
+const activePublicPath = fs.existsSync(frontendPath) ? frontendPath : fallbackFrontendPath;
+
 // Swagger configuration
 const swaggerOptions = {
   definition: {
@@ -28,13 +33,7 @@ const swaggerOptions = {
       },
     ],
   },
-  // FIXED: Precise file patterns to prevent EISDIR errors on Vercel
-  apis: [
-    './dist/controllers/*.js',
-    './dist/routes/*.js',
-    './src/controllers/*.ts',
-    './src/routes/*.ts'
-  ],
+  apis: ['./dist/**/*.js', './src/**/*.ts'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -43,43 +42,43 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// API Routes
+// 1. Static Files (High Priority)
+app.use(express.static(activePublicPath));
+
+// 2. API Routes
 app.use('/api/profiles', profileRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health check API
+// 3. Specific Health API (Must be /api/health)
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'success', 
     message: 'Intelligence Query Engine is running',
-    db_connected: !!process.env.DATABASE_URL
+    db_connected: !!process.env.DATABASE_URL,
+    ui_path: activePublicPath
   });
 });
 
-// Resolve Frontend Path
-const frontendPath = path.join(process.cwd(), 'dist', 'public');
-
-// Serve static files
-app.use(express.static(frontendPath));
-
-// catch-all handler for the UI (Middleware mode for stability)
-app.use((req, res, next) => {
+// 4. Catch-all for UI (Serve index.html for all non-API paths)
+app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
     return next();
   }
 
-  const indexPath = path.join(frontendPath, 'index.html');
+  const indexPath = path.join(activePublicPath, 'index.html');
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
 
+  // Final emergency response
   res.json({ 
     status: 'success', 
     message: 'Insighta Labs API is Live.',
+    info: 'UI index.html not found. Please verify the build process.',
     debug: {
-      checked_path: frontendPath,
-      exists: fs.existsSync(frontendPath),
-      documentation: '/api-docs'
+      cwd: process.cwd(),
+      checked: activePublicPath,
+      exists: fs.existsSync(activePublicPath)
     }
   });
 });
