@@ -51,8 +51,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Resolve Frontend Path (Now inside src/public)
-const frontendPath = path.join(__dirname, 'public');
+// Resolve Frontend Path
+const frontendPath = path.join(process.cwd(), 'src', 'public');
 
 // Serve static files
 app.use(express.static(frontendPath));
